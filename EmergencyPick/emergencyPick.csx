@@ -1,21 +1,57 @@
-﻿using System.Net;
+﻿#load "..\Lib\IsPickable.csx"
+#load "..\Lib\PickEntity.csx"
+
+#r "..\Common\PppPool.Common.dll"
+#r "Microsoft.WindowsAzure.Storage"
+#r "Newtonsoft.Json"
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Threading;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using PppPool.Common;
 
 public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
 {
-    log.Info($"C# HTTP trigger function processed a request. RequestUri={req.RequestUri}");
+    var jwt = await req.GetJwt("admin");
+    if (jwt == null)
+        return req.CreateError(HttpStatusCode.Unauthorized);
 
-    // parse query parameter
-    string name = req.GetQueryNameValuePairs()
-        .FirstOrDefault(q => string.Compare(q.Key, "name", true) == 0)
-        .Value;
+    IDictionary<string, string> query = req.GetQueryNameValuePairs().ToDictionary(pair => pair.Key, pair => pair.Value);
 
-    // Get request body
-    dynamic data = await req.Content.ReadAsAsync<object>();
+    var tour = query["tour"];
+    var playerId = query["playerId"];
+    var playerName = query["playerName"];
+    var userId = query["userId"];
+    var email = query["email"];
 
-    // Set name to query string or body data
-    name = name ?? data?.name;
+    var tournamentsUrl = "TournamentsUrl".GetEnvVar();
+    var pickingTournaments = await RestService.AuthorizedPostAsync($"{tournamentsUrl}/api/GetTournaments", new Dictionary<string, string>
+    {
+        ["season"] = "current",
+        ["tour"] = tour,
+        ["key"] = "state",
+        ["value"] = "progressing,picking",
+    }, "ServiceToken".GetEnvVar());
 
-    return name == null
-        ? req.CreateResponse(HttpStatusCode.BadRequest, "Please pass a name on the query string or in the request body")
-        : req.CreateResponse(HttpStatusCode.OK, "Hello " + name);
+    if (((JArray)pickingTournaments).Count != 1)
+        return req.CreateError(HttpStatusCode.BadRequest);
+
+    var tournament = ((JArray)pickingTournaments)[0];
+
+    var season = (int)tournament["Season"];
+
+    var isPickable = await IsPickable(season, tour, userId, playerId);
+    if (!isPickable)
+        return req.CreateError(HttpStatusCode.BadRequest);
+
+    var pickEntity = new PickEntity(season, tour, userId, email, playerId, playerName, (string)tournament["PermanentNumber"], (string)tournament["Index"]);
+    var tableService = new TableService("PicksStorage".GetEnvVar());
+    await tableService.UpsertEntityAsync("picks", pickEntity);
+
+    return req.CreateOk(new { PlayerId = playerId });
 }

@@ -14,8 +14,8 @@ using PppPool.Common;
 
 public static async Task<bool> IsPickable(int season, string tourName, string userId, string playerId)
 {
-    var blobService = new BlobService("PppPoolStorage".GetEnvVar());
-    var picksJson = await blobService.DownloadBlobAsync("picks", $"{season}/{tourName}/${userId}.json");
+    var blobService = new BlobService("PicksStorage".GetEnvVar());
+    var picksJson = await blobService.DownloadBlobAsync("picks", $"{season}/{tourName}/{userId}.json");
     if (!string.IsNullOrEmpty(picksJson))
     {
         var jPicks = JArray.Parse(picksJson);
