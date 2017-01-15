@@ -1,7 +1,6 @@
 ﻿#load "..\Lib\PickEntity.csx"
 
 #r "..\Common\PppPool.Common.dll"
-#r "Microsoft.WindowsAzure.Storage"
 #r "Newtonsoft.Json"
 
 using System;
