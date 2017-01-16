@@ -31,7 +31,7 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
     // If this is being asked by and admin, then it could be for an "EmergencyPick". If a userId is supplied with the
     // request, use that userId, instead of the one making the pick.
     var adminJwt = await req.GetJwt("admin");
-    if(jwt != null)
+    if(adminJwt != null)
     {
         IDictionary<string, string> query = req.GetQueryNameValuePairs().ToDictionary(pair => pair.Key, pair => pair.Value);
         if (query.ContainsKey("userId"))
