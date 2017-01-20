@@ -48,5 +48,16 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
     var tableService = new TableService(connectionString);
     var picks = await tableService.GetPartitionAsync<PickEntity>("picks", $"{season}:{tour}:{index}");
 
-    return req.CreateOk(picks);
+    if (query.ContainsKey("user"))
+    {
+        var userId = jwt.UserId;
+        var pick = picks.FirstOrDefault(x => x.UserId == userId);
+        if (pick != null)
+            pick.UserEmail = jwt.Email;
+        return pick != null ? req.CreateOk(pick) : req.CreateOk(new { empty = true });
+    }
+    else
+    {
+        return req.CreateOk(picks);
+    }
 }
