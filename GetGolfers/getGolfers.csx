@@ -76,6 +76,7 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
             Name = (string)tournament["Name"],
             Start = (DateTime)tournament["Start"],
             State = (string)tournament["State"],
+            Index = (string)tournament["Index"],
         },
         Golfers = players,
     });
