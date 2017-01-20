@@ -69,7 +69,16 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
             players.Add(player);
     }
 
-    return req.CreateOk(players);
+    return req.CreateOk(new
+    {
+        Tournament = new
+        {
+            Name = (string)tournament["Name"],
+            Start = (DateTime)tournament["Start"],
+            State = (string)tournament["State"],
+        },
+        Golfers = players,
+    });
 
 }
 
