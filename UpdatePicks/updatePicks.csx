@@ -31,9 +31,16 @@ public static async Task Run(TimerInfo timer, TraceWriter log)
         foreach (var pickEntity in partition)
         {
             var userId = pickEntity.UserId;
-            var userEmail = pickEntity.UserEmail;
             var playerId = pickEntity.PlayerId;
             var playerName = pickEntity.PlayerName;
+            if(pickEntity.TournamentId.Length == 2)
+            {
+                pickEntity.TournamentId = "0" + pickEntity.TournamentId;
+            }
+            if(pickEntity.TournamentId.Length == 1)
+            {
+                pickEntity.TournamentId = "00" + pickEntity.TournamentId;
+            }
             if (!data.ContainsKey(userId))
                 data[userId] = new List<PickRecord>();
             data[userId].Add(new PickRecord
@@ -44,7 +51,6 @@ public static async Task Run(TimerInfo timer, TraceWriter log)
                 TournamentName = (string)tournament["Name"],
                 TournamentId = pickEntity.TournamentId,
                 UserId = userId,
-                UserEmail = userEmail,
                 PlayerId = playerId,
                 PlayerName = playerName,
             });
@@ -92,7 +98,6 @@ public class PickRecord
     public string TournamentId { get; set; }
     public string TournamentName { get; set; }
     public string UserId { get; set; }
-    public string UserEmail { get; set; }
     public string PlayerId { get; set; }
     public string PlayerName { get; set; }
 }

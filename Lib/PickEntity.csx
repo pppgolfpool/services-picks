@@ -21,12 +21,11 @@ public class PickEntity : TableEntity
 
     }
 
-    public PickEntity(int season, string tourName, string userId, string email, string playerId, string playerName, string tournamentId, string tournamentIndex)
+    public PickEntity(int season, string tourName, string userId, string playerId, string playerName, string tournamentId, string tournamentIndex)
     {
         PartitionKey = $"{season}:{tourName}:{tournamentIndex}";
         RowKey = $"{userId}";
         UserId = userId;
-        UserEmail = email;
         PlayerId = playerId;
         PlayerName = playerName;
         Season = season;
@@ -36,8 +35,6 @@ public class PickEntity : TableEntity
     }
 
     public string UserId { get; set; }
-
-    public string UserEmail { get; set; }
 
     public string PlayerId { get; set; }
 

@@ -26,7 +26,6 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
     var playerId = query["playerId"];
     var playerName = query["playerName"];
     var userId = query["userId"];
-    var email = query["email"];
 
     var tournamentsUrl = "TournamentsUrl".GetEnvVar();
     var pickingTournaments = await RestService.AuthorizedPostAsync($"{tournamentsUrl}/api/GetTournaments", new Dictionary<string, string>
@@ -48,7 +47,7 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
     if (!isPickable)
         return req.CreateError(HttpStatusCode.BadRequest);
 
-    var pickEntity = new PickEntity(season, tour, userId, email, playerId, playerName, (string)tournament["PermanentNumber"], (string)tournament["Index"]);
+    var pickEntity = new PickEntity(season, tour, userId, playerId, playerName, (string)tournament["PermanentNumber"], (string)tournament["Index"]);
     var tableService = new TableService("PicksStorage".GetEnvVar());
     await tableService.UpsertEntityAsync("picks", pickEntity);
 

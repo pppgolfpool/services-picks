@@ -51,13 +51,34 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
     if (query.ContainsKey("user"))
     {
         var userId = jwt.UserId;
-        var pick = picks.FirstOrDefault(x => x.UserId == userId);
+        var pickEntity = picks.FirstOrDefault(x => x.UserId == userId);
+        if (pickEntity == null)
+            return req.CreateOk(new { empty = true });
+        JObject pick = JObject.FromObject(picks.FirstOrDefault(x => x.UserId == userId));
         if (pick != null)
-            pick.UserEmail = jwt.Email;
+            pick["UserEmail"] = jwt.Email;
         return pick != null ? req.CreateOk(pick) : req.CreateOk(new { empty = true });
     }
     else
     {
-        return req.CreateOk(picks);
+
+        var usersUrl = "UserUrl".GetEnvVar();
+        var profiles = await RestService.AuthorizedPostAsync($"{usersUrl}/api/GetProfile", new Dictionary<string, string>
+        {
+            ["key"] = "all",
+        }, "ServiceToken".GetEnvVar());
+
+        var picksList = new List<JObject>();
+        foreach (var pick in picks)
+        {
+            var profile = profiles.FirstOrDefault(x => (string)x["UserId"] == pick.UserId);
+            var jPick = JObject.FromObject(pick);
+            jPick.Property("ETag").Remove();
+            jPick["Email"] = profile != null ? (string)profile["Email"] : null;
+            jPick["Poolie"] = profile != null ? (string)profile["Name"] : null;
+            picksList.Add(jPick);
+        }
+
+        return req.CreateOk(picksList);
     }
 }

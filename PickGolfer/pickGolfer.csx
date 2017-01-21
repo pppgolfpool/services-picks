@@ -20,7 +20,6 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
     if (jwt == null)
         return req.CreateError(HttpStatusCode.Unauthorized);
     string userId = jwt.UserId;
-    string email = jwt.Email;
 
     IDictionary<string, string> query = req.GetQueryNameValuePairs().ToDictionary(pair => pair.Key, pair => pair.Value);
 
@@ -48,7 +47,7 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
     if (!isPickable)
         return req.CreateError(HttpStatusCode.BadRequest);
 
-    var pickEntity = new PickEntity(season, tour, userId, email, playerId, playerName, (string)tournament["PermanentNumber"], (string)tournament["Index"]);
+    var pickEntity = new PickEntity(season, tour, userId, playerId, playerName, (string)tournament["PermanentNumber"], (string)tournament["Index"]);
     var tableService = new TableService("PicksStorage".GetEnvVar());
     await tableService.UpsertEntityAsync("picks", pickEntity);
 
