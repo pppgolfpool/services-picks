@@ -1,4 +1,6 @@
 ﻿#load "..\Lib\PickEntity.csx"
+#load "..\Lib\GetSeason.csx"
+#load "..\Lib\GetPastTournaments.csx"
 
 #r "..\Common\PppPool.Common.dll"
 #r "Newtonsoft.Json"
@@ -23,7 +25,15 @@ public static async Task Run(TimerInfo timer, TraceWriter log)
     var tableService = new TableService("PicksStorage".GetEnvVar());
     var blobService = new BlobService("PicksStorage".GetEnvVar());
 
+    var summary = new JObject();
+
     var pastTournaments = await GetPastTournaments();
+    var usersUrl = "UserUrl".GetEnvVar();
+    var profiles = await RestService.AuthorizedPostAsync($"{usersUrl}/api/GetProfile", new Dictionary<string, string>
+    {
+        ["key"] = "all",
+    }, "ServiceToken".GetEnvVar());
+
     foreach (JObject tournament in pastTournaments)
     {
         var pickPartitionKey = $"{season}:PGA TOUR:{tournament["Index"]}";
@@ -43,7 +53,7 @@ public static async Task Run(TimerInfo timer, TraceWriter log)
             }
             if (!data.ContainsKey(userId))
                 data[userId] = new List<PickRecord>();
-            data[userId].Add(new PickRecord
+            var pickRecord = new PickRecord
             {
                 Season = season,
                 Tour = pickEntity.Tour,
@@ -53,7 +63,37 @@ public static async Task Run(TimerInfo timer, TraceWriter log)
                 UserId = userId,
                 PlayerId = playerId,
                 PlayerName = playerName,
-            });
+            };
+            data[userId].Add(pickRecord);
+
+            var profile = profiles.SingleOrDefault(x => (string)x["UserId"] == userId);
+
+            var key = $"{(string)profile["LastFirst"]}:{userId}";
+            if (summary[key] == null)
+            {
+                summary[key] = new JArray();
+            }
+            var profileSummary = summary[key] as JArray;
+            var count = 1;
+            foreach(JObject pastPick in profileSummary)
+            {
+                if ((string)pastPick["PlayerId"] == pickRecord.PlayerId)
+                    count++;
+            }
+            profileSummary.Add(JObject.FromObject(new
+            {
+                Season = season,
+                Tour = pickEntity.Tour,
+                TournamentIndex = pickEntity.TournamentIndex,
+                TournamentName = (string)tournament["Name"],
+                TournamentId = pickEntity.TournamentId,
+                UserId = userId,
+                UserName = (string)profile["Name"],
+                LastFirst = (string)profile["LastFirst"],
+                PlayerId = playerId,
+                PlayerName = playerName,
+                Instance = count,
+            }));
         }
     }
     foreach (var item in data)
@@ -62,32 +102,28 @@ public static async Task Run(TimerInfo timer, TraceWriter log)
         var value = JArray.FromObject(item.Value).ToString(Formatting.Indented);
         await blobService.UploadBlobAsync("pickhistory", path, value);
     }
+
+    Sort(summary);
+    await blobService.UploadBlobAsync("pickhistory", $"{season}/PGA TOUR/summary.json", summary.ToString(Formatting.Indented));
+
     var end = DateTime.UtcNow;
     log.Info($"Execution Time: {end - start}");
 }
 
-public static async Task<int> GetSeason()
+public static void Sort(JObject jObj)
 {
-    var serviceToken = "ServiceToken".GetEnvVar();
-    var tournamentsUrl = "TournamentsUrl".GetEnvVar();
-
-    var response = await RestService.AuthorizedPostAsync($"{tournamentsUrl}/api/Season", null, serviceToken);
-    return (int)response["Season"];
-}
-
-public static async Task<JArray> GetPastTournaments()
-{
-    var serviceToken = "ServiceToken".GetEnvVar();
-    var tournamentsUrl = "TournamentsUrl".GetEnvVar();
-
-    var response = await RestService.AuthorizedPostAsync($"{tournamentsUrl}/api/GetTournaments", new Dictionary<string, string>
+    var props = jObj.Properties().ToList();
+    foreach (var prop in props)
     {
-        ["season"] = "current",
-        ["tour"] = "PGA TOUR",
-        ["key"] = "state",
-        ["value"] = "dequeued",
-    }, serviceToken);
-    return (JArray)response;
+        prop.Remove();
+    }
+
+    foreach (var prop in props.OrderBy(p => p.Name))
+    {
+        jObj.Add(prop);
+        if (prop.Value is JObject)
+            Sort((JObject)prop.Value);
+    }
 }
 
 public class PickRecord
