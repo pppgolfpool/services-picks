@@ -76,9 +76,11 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
             jPick.Property("ETag").Remove();
             jPick["Email"] = profile != null ? (string)profile["Email"] : null;
             jPick["Poolie"] = profile != null ? (string)profile["Name"] : null;
+            var nameSplit = ((string)profile["Name"]).Split(new []{ ' ' });
+            jPick["LastFirst"] = $"{nameSplit.Last()}, {nameSplit.First()}";
             picksList.Add(jPick);
         }
 
-        return req.CreateOk(picksList);
+        return req.CreateOk(picksList.OrderBy(x => (string)x["LastFirst"]));
     }
 }
