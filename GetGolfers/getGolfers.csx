@@ -65,7 +65,7 @@ public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceW
             if (((string)player["TournamentPlayerId"]).Equals(pickPlayerId, StringComparison.OrdinalIgnoreCase))
                 pickCount++;
         }
-        if (pickCount < 2)
+        if (pickCount < 2 && ((string)player["isAlternate"]).ToLower() == "no")
             players.Add(player);
     }
 
